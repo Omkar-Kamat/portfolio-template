@@ -23,6 +23,7 @@ export function mapRow<T>(row: any): T {
     abouttext: "aboutText",
     contactemail: "contactEmail",
     resumeurl: "resumeUrl",
+    heroimage: "heroImage",
     createdat: "createdAt",
     updatedat: "updatedAt"
   };
@@ -117,6 +118,7 @@ export async function initDb() {
       aboutText TEXT NOT NULL DEFAULT '',
       contactEmail TEXT NOT NULL DEFAULT '',
       resumeUrl TEXT NOT NULL DEFAULT '',
+      heroImage TEXT NOT NULL DEFAULT '',
       published INTEGER NOT NULL DEFAULT 1,
       updatedAt TEXT NOT NULL DEFAULT current_timestamp
     );

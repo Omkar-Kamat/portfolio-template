@@ -64,6 +64,7 @@ export type SettingsRow = {
   aboutText: string;
   contactEmail: string;
   resumeUrl: string;
+  heroImage: string;
   published: number;
   updatedAt: string;
 };
@@ -230,7 +231,7 @@ export const SettingsStore = {
     await sql`
       UPDATE settings SET siteName=${next.siteName}, tagline=${next.tagline}, heroName=${next.heroName}, heroRole=${next.heroRole},
        heroText=${next.heroText}, aboutText=${next.aboutText}, contactEmail=${next.contactEmail}, resumeUrl=${next.resumeUrl},
-       published=${next.published}, updatedAt=current_timestamp WHERE id='singleton'
+       heroImage=${next.heroImage}, published=${next.published}, updatedAt=current_timestamp WHERE id='singleton'
     `;
     return this.get();
   },

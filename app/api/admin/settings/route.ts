@@ -22,6 +22,7 @@ export async function PATCH(req: NextRequest) {
     aboutText: body.aboutText ?? current.aboutText,
     contactEmail: body.contactEmail ?? current.contactEmail,
     resumeUrl: body.resumeUrl ?? current.resumeUrl,
+    heroImage: body.heroImage ?? current.heroImage,
     published: body.published !== undefined ? (body.published ? 1 : 0) : current.published,
   });
   return NextResponse.json(updated);

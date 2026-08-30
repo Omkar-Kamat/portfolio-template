@@ -26,6 +26,7 @@ export default async function HomePage() {
         role={settings.heroRole}
         text={settings.heroText}
         resumeUrl={settings.resumeUrl}
+        heroImage={settings.heroImage}
       />
     ),
     about: <About key="about" text={settings.aboutText} />,

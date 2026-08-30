@@ -12,6 +12,7 @@ type Settings = {
   aboutText: string;
   contactEmail: string;
   resumeUrl: string;
+  heroImage: string;
   published: number;
 };
 
@@ -153,6 +154,14 @@ export default function SettingsPage() {
             />
           </Field>
         </div>
+
+        <Field label="Hero Image URL">
+          <input
+            className={inputClass}
+            value={settings.heroImage || ""}
+            onChange={(e) => setSettings({ ...settings, heroImage: e.target.value })}
+          />
+        </Field>
 
         <div className="flex items-center gap-3 pt-1">
           <button

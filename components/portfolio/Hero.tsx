@@ -8,11 +8,13 @@ export default function Hero({
   role,
   text,
   resumeUrl,
+  heroImage,
 }: {
   name: string;
   role: string;
   text: string;
   resumeUrl: string;
+  heroImage?: string;
 }) {
   return (
     <section className="relative min-h-[92vh] flex items-center overflow-hidden">
@@ -31,10 +33,26 @@ export default function Hero({
       />
 
       <div className="relative max-w-5xl mx-auto px-6 w-full pt-16">
+        {heroImage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-6"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroImage}
+              alt={name}
+              className="w-48 h-48 md:w-64 md:h-64 rounded-full object-cover border border-white/10 shadow-xl"
+            />
+          </motion.div>
+        )}
+
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.5, delay: heroImage ? 0.1 : 0 }}
           className="text-xs uppercase tracking-[0.2em] text-emerald-400 mb-6"
         >
           {role}
@@ -43,7 +61,7 @@ export default function Hero({
         <motion.h1
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.05 }}
+          transition={{ duration: 0.6, delay: heroImage ? 0.2 : 0.05 }}
           className="text-4xl sm:text-6xl font-semibold tracking-tight text-white leading-[1.05] max-w-3xl"
         >
           Hi, I&apos;m {name}.
@@ -52,7 +70,7 @@ export default function Hero({
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.15 }}
+          transition={{ duration: 0.6, delay: heroImage ? 0.3 : 0.15 }}
           className="mt-6 text-lg text-neutral-400 max-w-xl leading-relaxed"
         >
           {text}
@@ -61,7 +79,7 @@ export default function Hero({
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.25 }}
+          transition={{ duration: 0.6, delay: heroImage ? 0.4 : 0.25 }}
           className="mt-10 flex flex-wrap items-center gap-3"
         >
           <a
