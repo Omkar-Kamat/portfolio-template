@@ -8,6 +8,34 @@ export function genId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
 }
 
+export function mapRow<T>(row: any): T {
+  if (!row) return row;
+  const keyMap: Record<string, string> = {
+    shortdesc: "shortDesc",
+    githuburl: "githubUrl",
+    liveurl: "liveUrl",
+    startdate: "startDate",
+    enddate: "endDate",
+    sitename: "siteName",
+    heroname: "heroName",
+    herorole: "heroRole",
+    herotext: "heroText",
+    abouttext: "aboutText",
+    contactemail: "contactEmail",
+    resumeurl: "resumeUrl",
+    createdat: "createdAt",
+    updatedat: "updatedAt"
+  };
+  const mapped = { ...row };
+  for (const [lower, camel] of Object.entries(keyMap)) {
+    if (lower in mapped && lower !== camel) {
+      mapped[camel] = mapped[lower];
+      delete mapped[lower];
+    }
+  }
+  return mapped as T;
+}
+
 export async function initDb() {
   if (!process.env.DATABASE_URL) return;
 

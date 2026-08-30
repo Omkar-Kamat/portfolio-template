@@ -1,4 +1,4 @@
-import { sql, genId } from "./db";
+import { sql, genId, mapRow } from "./db";
 
 export type SectionRow = {
   id: string;
@@ -88,7 +88,7 @@ export const Sections = {
       UPDATE sections SET enabled = ${next.enabled ? 1 : 0}, "order" = ${next.order}, title = ${next.title}, content = ${next.content}, updatedAt = current_timestamp WHERE id = ${id}
     `;
     const updated = (await sql`SELECT * FROM sections WHERE id = ${id}`) as any[];
-    return updated[0] as SectionRow;
+    return mapRow(updated[0]) as SectionRow;
   },
   async reorder(order: string[]) {
     if (!process.env.DATABASE_URL) return;
@@ -111,7 +111,7 @@ export const Projects = {
   async get(id: string): Promise<ProjectRow | undefined> {
     if (!process.env.DATABASE_URL) return undefined;
     const rows = (await sql`SELECT * FROM projects WHERE id = ${id}`) as any[];
-    return rows[0] as ProjectRow | undefined;
+    return mapRow(rows[0]) as ProjectRow | undefined;
   },
   async create(data: Omit<ProjectRow, "id" | "createdAt" | "updatedAt">) {
     if (!process.env.DATABASE_URL) return null;
@@ -150,7 +150,7 @@ export const Experiences = {
   async get(id: string): Promise<ExperienceRow | undefined> {
     if (!process.env.DATABASE_URL) return undefined;
     const rows = (await sql`SELECT * FROM experiences WHERE id = ${id}`) as any[];
-    return rows[0] as ExperienceRow | undefined;
+    return mapRow(rows[0]) as ExperienceRow | undefined;
   },
   async create(data: Omit<ExperienceRow, "id">) {
     if (!process.env.DATABASE_URL) return null;
@@ -220,7 +220,7 @@ export const SettingsStore = {
   async get(): Promise<SettingsRow> {
     if (!process.env.DATABASE_URL) return {} as SettingsRow;
     const rows = (await sql`SELECT * FROM settings WHERE id = 'singleton'`) as any[];
-    return rows[0] as SettingsRow;
+    return mapRow(rows[0]) as SettingsRow;
   },
   async update(data: Partial<Omit<SettingsRow, "id" | "updatedAt">>) {
     if (!process.env.DATABASE_URL) return null;
