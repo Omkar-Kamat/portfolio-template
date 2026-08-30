@@ -63,8 +63,8 @@ if (!hasSettings) db.prepare(`INSERT INTO settings (id) VALUES ('singleton')`).r
 db.prepare(
   `UPDATE settings SET siteName=?, heroName=?, heroRole=?, heroText=?, aboutText=?, contactEmail=?, resumeUrl=? WHERE id='singleton'`
 ).run(
-  "devil.dev",
-  "Devil",
+  "Rohit Sharma",
+  "Rohit Sharma",
   "CSE Student / Builder",
   "I build software that solves actual problems — at the intersection of software, AI & product.",
   "I'm a Computer Science student who likes shipping full products, not just demos. Most of what I build starts as a personal itch — a tool I wished existed — and turns into something other people end up using too. Lately I've been deep in Next.js, TypeScript, and applied AI.",
