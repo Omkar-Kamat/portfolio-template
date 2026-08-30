@@ -5,14 +5,14 @@
  * Usage: npm run seed
  */
 const path = require("path");
-const { DatabaseSync } = require("node:sqlite");
+const Database = require("better-sqlite3");
 
 const dbPath = path.join(process.cwd(), "data", "portfolio.db");
 const fs = require("fs");
 if (!fs.existsSync(path.dirname(dbPath))) fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-const db = new DatabaseSync(dbPath);
-db.exec("PRAGMA journal_mode = WAL;");
+const db = new Database(dbPath);
+db.pragma("journal_mode = WAL");
 
 function genId(prefix) {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;

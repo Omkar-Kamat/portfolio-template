@@ -1,24 +1,46 @@
-import { DatabaseSync } from "node:sqlite";
+import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
-const dbPath = path.join(process.cwd(), "data", "portfolio.db");
+/*
+ * On platforms with read-only filesystems (Vercel, AWS Lambda, etc.) the
+ * bundled data/portfolio.db cannot be opened in WAL mode because the runtime
+ * directory is read-only.  We copy the seed database to /tmp at cold-start so
+ * SQLite can write its WAL and SHM files.  In development (or any writable
+ * environment) we just open the file in-place.
+ */
 
-// Ensure the data directory exists
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+function resolveDbPath(): string {
+  const srcDb = path.join(process.cwd(), "data", "portfolio.db");
+
+  // In production on serverless (read-only fs), copy to /tmp
+  if (process.env.NODE_ENV === "production" && process.env.VERCEL) {
+    const tmpDb = "/tmp/portfolio.db";
+    if (!fs.existsSync(tmpDb) && fs.existsSync(srcDb)) {
+      fs.copyFileSync(srcDb, tmpDb);
+    }
+    return tmpDb;
+  }
+
+  // Development / writable environments — use in-place
+  const dataDir = path.dirname(srcDb);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  return srcDb;
 }
+
+const dbPath = resolveDbPath();
 
 declare global {
   // eslint-disable-next-line no-var
-  var __db: DatabaseSync | undefined;
+  var __db: Database.Database | undefined;
 }
 
 function createDb() {
-  const database = new DatabaseSync(dbPath);
-  database.exec("PRAGMA journal_mode = WAL;");
-  database.exec("PRAGMA foreign_keys = ON;");
+  const database = new Database(dbPath);
+  database.pragma("journal_mode = WAL");
+  database.pragma("foreign_keys = ON");
   return database;
 }
 
@@ -31,20 +53,19 @@ function genId(prefix: string) {
 export { genId };
 
 /**
- * Convert a null-prototype object (as returned by node:sqlite) into a plain
- * `{}` object so it can be serialized across the Server → Client Component
- * boundary in Next.js.
+ * Convert a null-prototype object (as returned by some SQLite drivers) into a
+ * plain `{}` object so it can be serialized across the Server → Client
+ * Component boundary in Next.js.
  */
 export function plain<T>(row: T): T {
   if (row == null) return row;
   return JSON.parse(JSON.stringify(row));
 }
 
-/** Convert an array of null-prototype rows to plain objects. */
+/** Convert an array of rows to plain objects. */
 export function plainAll<T>(rows: T[]): T[] {
   return rows.map(plain);
 }
-
 
 export function initDb() {
   db.exec(`
