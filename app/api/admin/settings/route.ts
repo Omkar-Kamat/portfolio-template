@@ -5,15 +5,15 @@ import { SettingsStore } from "@/lib/data";
 export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  return NextResponse.json(SettingsStore.get());
+  return NextResponse.json(await SettingsStore.get());
 }
 
 export async function PATCH(req: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const body = await req.json();
-  const current = SettingsStore.get();
-  const updated = SettingsStore.update({
+  const current = await SettingsStore.get();
+  const updated = await SettingsStore.update({
     siteName: body.siteName ?? current.siteName,
     tagline: body.tagline ?? current.tagline,
     heroName: body.heroName ?? current.heroName,

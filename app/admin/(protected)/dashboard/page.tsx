@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Sections, Projects, Experiences, Skills, SettingsStore } from "@/lib/data";
 
 export default async function DashboardPage() {
-  const sections = Sections.all();
-  const projects = Projects.all();
-  const experiences = Experiences.all();
-  const skills = Skills.all();
-  const settings = SettingsStore.get();
+  const sections = await Sections.all();
+  const projects = await Projects.all();
+  const experiences = await Experiences.all();
+  const skills = await Skills.all();
+  const settings = await SettingsStore.get();
 
   const stats = [
     { label: "Sections active", value: sections.filter((s) => s.enabled).length, total: sections.length },

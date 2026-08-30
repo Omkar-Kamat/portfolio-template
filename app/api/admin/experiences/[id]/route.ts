@@ -6,10 +6,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  const current = Experiences.get(id);
+  const current = await Experiences.get(id);
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json();
-  const updated = Experiences.update(id, {
+  const updated = await Experiences.update(id, {
     company: body.company ?? current.company,
     role: body.role ?? current.role,
     location: body.location ?? current.location,
@@ -26,6 +26,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  Experiences.remove(id);
+  await Experiences.remove(id);
   return NextResponse.json({ ok: true });
 }

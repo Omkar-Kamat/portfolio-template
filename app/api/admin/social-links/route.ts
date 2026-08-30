@@ -5,7 +5,7 @@ import { SocialLinks } from "@/lib/data";
 export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  return NextResponse.json(SocialLinks.all());
+  return NextResponse.json(await SocialLinks.all());
 }
 
 export async function POST(req: NextRequest) {
@@ -15,6 +15,6 @@ export async function POST(req: NextRequest) {
   if (!body.platform || !body.url) {
     return NextResponse.json({ error: "Platform and URL are required" }, { status: 400 });
   }
-  const id = SocialLinks.create({ platform: body.platform, url: body.url, order: body.order ?? 0 });
+  const id = await SocialLinks.create({ platform: body.platform, url: body.url, order: body.order ?? 0 });
   return NextResponse.json({ id }, { status: 201 });
 }

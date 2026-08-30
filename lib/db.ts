@@ -1,74 +1,17 @@
-import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
+import { neon } from "@neondatabase/serverless";
 
-/*
- * On platforms with read-only filesystems (Vercel, AWS Lambda, etc.) the
- * bundled data/portfolio.db cannot be opened in WAL mode because the runtime
- * directory is read-only.  We copy the seed database to /tmp at cold-start so
- * SQLite can write its WAL and SHM files.  In development (or any writable
- * environment) we just open the file in-place.
- */
+// Create the neon SQL client
+// We check if DATABASE_URL is set so the build doesn't crash if it's missing during Vercel build phase
+export const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : (() => []) as unknown as ReturnType<typeof neon>;
 
-function resolveDbPath(): string {
-  const srcDb = path.join(process.cwd(), "data", "portfolio.db");
-
-  // In production on serverless (read-only fs), copy to /tmp
-  if (process.env.NODE_ENV === "production" && process.env.VERCEL) {
-    const tmpDb = "/tmp/portfolio.db";
-    if (!fs.existsSync(tmpDb) && fs.existsSync(srcDb)) {
-      fs.copyFileSync(srcDb, tmpDb);
-    }
-    return tmpDb;
-  }
-
-  // Development / writable environments — use in-place
-  const dataDir = path.dirname(srcDb);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  return srcDb;
-}
-
-const dbPath = resolveDbPath();
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __db: Database.Database | undefined;
-}
-
-function createDb() {
-  const database = new Database(dbPath);
-  database.pragma("journal_mode = WAL");
-  database.pragma("foreign_keys = ON");
-  return database;
-}
-
-export const db = global.__db ?? createDb();
-if (process.env.NODE_ENV !== "production") global.__db = db;
-
-function genId(prefix: string) {
+export function genId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
 }
-export { genId };
 
-/**
- * Convert a null-prototype object (as returned by some SQLite drivers) into a
- * plain `{}` object so it can be serialized across the Server → Client
- * Component boundary in Next.js.
- */
-export function plain<T>(row: T): T {
-  if (row == null) return row;
-  return JSON.parse(JSON.stringify(row));
-}
+export async function initDb() {
+  if (!process.env.DATABASE_URL) return;
 
-/** Convert an array of rows to plain objects. */
-export function plainAll<T>(rows: T[]): T[] {
-  return rows.map(plain);
-}
-
-export function initDb() {
-  db.exec(`
+  await sql`
     CREATE TABLE IF NOT EXISTS sections (
       id TEXT PRIMARY KEY,
       type TEXT UNIQUE NOT NULL,
@@ -76,10 +19,12 @@ export function initDb() {
       enabled INTEGER NOT NULL DEFAULT 1,
       "order" INTEGER NOT NULL DEFAULT 0,
       content TEXT NOT NULL DEFAULT '{}',
-      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
-      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+      createdAt TEXT NOT NULL DEFAULT current_timestamp,
+      updatedAt TEXT NOT NULL DEFAULT current_timestamp
     );
+  `;
 
+  await sql`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -93,10 +38,12 @@ export function initDb() {
       featured INTEGER NOT NULL DEFAULT 0,
       published INTEGER NOT NULL DEFAULT 1,
       "order" INTEGER NOT NULL DEFAULT 0,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
-      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+      createdAt TEXT NOT NULL DEFAULT current_timestamp,
+      updatedAt TEXT NOT NULL DEFAULT current_timestamp
     );
+  `;
 
+  await sql`
     CREATE TABLE IF NOT EXISTS experiences (
       id TEXT PRIMARY KEY,
       company TEXT NOT NULL,
@@ -107,27 +54,33 @@ export function initDb() {
       description TEXT NOT NULL DEFAULT '',
       technologies TEXT NOT NULL DEFAULT '',
       "order" INTEGER NOT NULL DEFAULT 0,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
-      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+      createdAt TEXT NOT NULL DEFAULT current_timestamp,
+      updatedAt TEXT NOT NULL DEFAULT current_timestamp
     );
+  `;
 
+  await sql`
     CREATE TABLE IF NOT EXISTS skills (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       category TEXT NOT NULL DEFAULT 'Tools',
       "order" INTEGER NOT NULL DEFAULT 0,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+      createdAt TEXT NOT NULL DEFAULT current_timestamp
     );
+  `;
 
+  await sql`
     CREATE TABLE IF NOT EXISTS social_links (
       id TEXT PRIMARY KEY,
       platform TEXT NOT NULL,
       url TEXT NOT NULL,
       "order" INTEGER NOT NULL DEFAULT 0
     );
+  `;
 
+  await sql`
     CREATE TABLE IF NOT EXISTS settings (
-      id TEXT PRIMARY KEY DEFAULT 'singleton',
+      id TEXT PRIMARY KEY,
       siteName TEXT NOT NULL DEFAULT 'Portfolio',
       tagline TEXT NOT NULL DEFAULT '',
       heroName TEXT NOT NULL DEFAULT 'Your Name',
@@ -137,17 +90,18 @@ export function initDb() {
       contactEmail TEXT NOT NULL DEFAULT '',
       resumeUrl TEXT NOT NULL DEFAULT '',
       published INTEGER NOT NULL DEFAULT 1,
-      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+      updatedAt TEXT NOT NULL DEFAULT current_timestamp
     );
-  `);
+  `;
 
-  const settingsRow = db.prepare(`SELECT id FROM settings WHERE id = 'singleton'`).get();
-  if (!settingsRow) {
-    db.prepare(`INSERT INTO settings (id) VALUES ('singleton')`).run();
+  const settingsRow = (await sql`SELECT id FROM settings WHERE id = 'singleton'`) as any[];
+  if (settingsRow.length === 0) {
+    await sql`INSERT INTO settings (id) VALUES ('singleton')`;
   }
 
-  const sectionCount = db.prepare(`SELECT COUNT(*) as c FROM sections`).get() as { c: number };
-  if (sectionCount.c === 0) {
+  const sectionCountRes = (await sql`SELECT COUNT(*) as c FROM sections`) as any[];
+  const sectionCount = Number(sectionCountRes[0].c);
+  if (sectionCount === 0) {
     const defaults = [
       { type: "hero", title: "Hero", order: 1 },
       { type: "about", title: "About", order: 2 },
@@ -156,13 +110,8 @@ export function initDb() {
       { type: "skills", title: "Skills", order: 5 },
       { type: "contact", title: "Contact", order: 6 },
     ];
-    const insert = db.prepare(
-      `INSERT INTO sections (id, type, title, enabled, "order") VALUES (?, ?, ?, 1, ?)`
-    );
     for (const s of defaults) {
-      insert.run(genId("sec"), s.type, s.title, s.order);
+      await sql`INSERT INTO sections (id, type, title, enabled, "order") VALUES (${genId("sec")}, ${s.type}, ${s.title}, 1, ${s.order})`;
     }
   }
 }
-
-initDb();

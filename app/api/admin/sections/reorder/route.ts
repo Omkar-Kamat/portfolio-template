@@ -7,6 +7,6 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
   const { order } = await req.json();
   if (!Array.isArray(order)) return NextResponse.json({ error: "order must be an array" }, { status: 400 });
-  Sections.reorder(order);
+  await Sections.reorder(order);
   return NextResponse.json({ ok: true });
 }

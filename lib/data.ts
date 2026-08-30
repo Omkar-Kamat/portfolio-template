@@ -1,4 +1,4 @@
-import { db, genId, plain, plainAll } from "./db";
+import { sql, genId } from "./db";
 
 export type SectionRow = {
   id: string;
@@ -70,155 +70,168 @@ export type SettingsRow = {
 
 // ---------- Sections ----------
 export const Sections = {
-  all(): SectionRow[] {
-    return plainAll(db.prepare(`SELECT * FROM sections ORDER BY "order" ASC`).all() as SectionRow[]);
+  async all(): Promise<SectionRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM sections ORDER BY "order" ASC` as SectionRow[];
   },
-  enabled(): SectionRow[] {
-    return plainAll(db
-      .prepare(`SELECT * FROM sections WHERE enabled = 1 ORDER BY "order" ASC`)
-      .all() as SectionRow[]);
+  async enabled(): Promise<SectionRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM sections WHERE enabled = 1 ORDER BY "order" ASC` as SectionRow[];
   },
-  update(id: string, data: Partial<Pick<SectionRow, "enabled" | "order" | "title" | "content">>) {
-    const current = db.prepare(`SELECT * FROM sections WHERE id = ?`).get(id) as SectionRow | undefined;
-    if (!current) return null;
+  async update(id: string, data: Partial<Pick<SectionRow, "enabled" | "order" | "title" | "content">>) {
+    if (!process.env.DATABASE_URL) return null;
+    const currentRows = (await sql`SELECT * FROM sections WHERE id = ${id}`) as any[];
+    if (currentRows.length === 0) return null;
+    const current = currentRows[0] as SectionRow;
     const next = { ...current, ...data };
-    db.prepare(
-      `UPDATE sections SET enabled = ?, "order" = ?, title = ?, content = ?, updatedAt = datetime('now') WHERE id = ?`
-    ).run(next.enabled ? 1 : 0, next.order, next.title, next.content, id);
-    return plain(db.prepare(`SELECT * FROM sections WHERE id = ?`).get(id) as SectionRow);
+    await sql`
+      UPDATE sections SET enabled = ${next.enabled ? 1 : 0}, "order" = ${next.order}, title = ${next.title}, content = ${next.content}, updatedAt = current_timestamp WHERE id = ${id}
+    `;
+    const updated = (await sql`SELECT * FROM sections WHERE id = ${id}`) as any[];
+    return updated[0] as SectionRow;
   },
-  reorder(order: string[]) {
-    const stmt = db.prepare(`UPDATE sections SET "order" = ? WHERE id = ?`);
-    db.exec("BEGIN");
-    try {
-      order.forEach((id, idx) => stmt.run(idx + 1, id));
-      db.exec("COMMIT");
-    } catch (err) {
-      db.exec("ROLLBACK");
-      throw err;
+  async reorder(order: string[]) {
+    if (!process.env.DATABASE_URL) return;
+    for (let i = 0; i < order.length; i++) {
+      await sql`UPDATE sections SET "order" = ${i + 1} WHERE id = ${order[i]}`;
     }
   },
 };
 
 // ---------- Projects ----------
 export const Projects = {
-  all(): ProjectRow[] {
-    return plainAll(db.prepare(`SELECT * FROM projects ORDER BY "order" ASC, createdAt DESC`).all() as ProjectRow[]);
+  async all(): Promise<ProjectRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM projects ORDER BY "order" ASC, createdAt DESC` as ProjectRow[];
   },
-  published(): ProjectRow[] {
-    return plainAll(db
-      .prepare(`SELECT * FROM projects WHERE published = 1 ORDER BY "order" ASC, createdAt DESC`)
-      .all() as ProjectRow[]);
+  async published(): Promise<ProjectRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM projects WHERE published = 1 ORDER BY "order" ASC, createdAt DESC` as ProjectRow[];
   },
-  get(id: string): ProjectRow | undefined {
-    return plain(db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow | undefined);
+  async get(id: string): Promise<ProjectRow | undefined> {
+    if (!process.env.DATABASE_URL) return undefined;
+    const rows = (await sql`SELECT * FROM projects WHERE id = ${id}`) as any[];
+    return rows[0] as ProjectRow | undefined;
   },
-  create(data: Omit<ProjectRow, "id" | "createdAt" | "updatedAt">) {
+  async create(data: Omit<ProjectRow, "id" | "createdAt" | "updatedAt">) {
+    if (!process.env.DATABASE_URL) return null;
     const id = genId("proj");
-    db.prepare(
-      `INSERT INTO projects (id, title, slug, description, shortDesc, image, githubUrl, liveUrl, technologies, featured, published, "order")
-       VALUES (@id, @title, @slug, @description, @shortDesc, @image, @githubUrl, @liveUrl, @technologies, @featured, @published, @order)`
-    ).run({ id, ...data });
+    await sql`
+      INSERT INTO projects (id, title, slug, description, shortDesc, image, githubUrl, liveUrl, technologies, featured, published, "order")
+      VALUES (${id}, ${data.title}, ${data.slug}, ${data.description}, ${data.shortDesc}, ${data.image}, ${data.githubUrl}, ${data.liveUrl}, ${data.technologies}, ${data.featured}, ${data.published}, ${data.order})
+    `;
     return this.get(id);
   },
-  update(id: string, data: Partial<Omit<ProjectRow, "id" | "createdAt" | "updatedAt">>) {
-    const current = this.get(id);
+  async update(id: string, data: Partial<Omit<ProjectRow, "id" | "createdAt" | "updatedAt">>) {
+    if (!process.env.DATABASE_URL) return null;
+    const current = await this.get(id);
     if (!current) return null;
     const next = { ...current, ...data };
-    db.prepare(
-      `UPDATE projects SET title=@title, slug=@slug, description=@description, shortDesc=@shortDesc,
-       image=@image, githubUrl=@githubUrl, liveUrl=@liveUrl, technologies=@technologies,
-       featured=@featured, published=@published, "order"=@order, updatedAt=datetime('now')
-       WHERE id=@id`
-    ).run({ ...next, id });
+    await sql`
+      UPDATE projects SET title=${next.title}, slug=${next.slug}, description=${next.description}, shortDesc=${next.shortDesc},
+       image=${next.image}, githubUrl=${next.githubUrl}, liveUrl=${next.liveUrl}, technologies=${next.technologies},
+       featured=${next.featured}, published=${next.published}, "order"=${next.order}, updatedAt=current_timestamp
+       WHERE id=${id}
+    `;
     return this.get(id);
   },
-  remove(id: string) {
-    db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+  async remove(id: string) {
+    if (!process.env.DATABASE_URL) return;
+    await sql`DELETE FROM projects WHERE id = ${id}`;
   },
 };
 
 // ---------- Experiences ----------
 export const Experiences = {
-  all(): ExperienceRow[] {
-    return plainAll(db.prepare(`SELECT * FROM experiences ORDER BY "order" ASC`).all() as ExperienceRow[]);
+  async all(): Promise<ExperienceRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM experiences ORDER BY "order" ASC` as ExperienceRow[];
   },
-  get(id: string): ExperienceRow | undefined {
-    return plain(db.prepare(`SELECT * FROM experiences WHERE id = ?`).get(id) as ExperienceRow | undefined);
+  async get(id: string): Promise<ExperienceRow | undefined> {
+    if (!process.env.DATABASE_URL) return undefined;
+    const rows = (await sql`SELECT * FROM experiences WHERE id = ${id}`) as any[];
+    return rows[0] as ExperienceRow | undefined;
   },
-  create(data: Omit<ExperienceRow, "id">) {
+  async create(data: Omit<ExperienceRow, "id">) {
+    if (!process.env.DATABASE_URL) return null;
     const id = genId("exp");
-    db.prepare(
-      `INSERT INTO experiences (id, company, role, location, startDate, endDate, description, technologies, "order")
-       VALUES (@id, @company, @role, @location, @startDate, @endDate, @description, @technologies, @order)`
-    ).run({ id, ...data });
+    await sql`
+      INSERT INTO experiences (id, company, role, location, startDate, endDate, description, technologies, "order")
+      VALUES (${id}, ${data.company}, ${data.role}, ${data.location}, ${data.startDate}, ${data.endDate}, ${data.description}, ${data.technologies}, ${data.order})
+    `;
     return this.get(id);
   },
-  update(id: string, data: Partial<Omit<ExperienceRow, "id">>) {
-    const current = this.get(id);
+  async update(id: string, data: Partial<Omit<ExperienceRow, "id">>) {
+    if (!process.env.DATABASE_URL) return null;
+    const current = await this.get(id);
     if (!current) return null;
     const next = { ...current, ...data };
-    db.prepare(
-      `UPDATE experiences SET company=@company, role=@role, location=@location, startDate=@startDate,
-       endDate=@endDate, description=@description, technologies=@technologies, "order"=@order,
-       updatedAt=datetime('now') WHERE id=@id`
-    ).run({ ...next, id });
+    await sql`
+      UPDATE experiences SET company=${next.company}, role=${next.role}, location=${next.location}, startDate=${next.startDate},
+       endDate=${next.endDate}, description=${next.description}, technologies=${next.technologies}, "order"=${next.order},
+       updatedAt=current_timestamp WHERE id=${id}
+    `;
     return this.get(id);
   },
-  remove(id: string) {
-    db.prepare(`DELETE FROM experiences WHERE id = ?`).run(id);
+  async remove(id: string) {
+    if (!process.env.DATABASE_URL) return;
+    await sql`DELETE FROM experiences WHERE id = ${id}`;
   },
 };
 
 // ---------- Skills ----------
 export const Skills = {
-  all(): SkillRow[] {
-    return plainAll(db.prepare(`SELECT * FROM skills ORDER BY category ASC, "order" ASC`).all() as SkillRow[]);
+  async all(): Promise<SkillRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM skills ORDER BY category ASC, "order" ASC` as SkillRow[];
   },
-  create(data: Omit<SkillRow, "id">) {
+  async create(data: Omit<SkillRow, "id">) {
+    if (!process.env.DATABASE_URL) return null;
     const id = genId("skill");
-    db.prepare(`INSERT INTO skills (id, name, category, "order") VALUES (@id, @name, @category, @order)`).run({
-      id,
-      ...data,
-    });
+    await sql`INSERT INTO skills (id, name, category, "order") VALUES (${id}, ${data.name}, ${data.category}, ${data.order})`;
     return id;
   },
-  remove(id: string) {
-    db.prepare(`DELETE FROM skills WHERE id = ?`).run(id);
+  async remove(id: string) {
+    if (!process.env.DATABASE_URL) return;
+    await sql`DELETE FROM skills WHERE id = ${id}`;
   },
 };
 
 // ---------- Social Links ----------
 export const SocialLinks = {
-  all(): SocialLinkRow[] {
-    return plainAll(db.prepare(`SELECT * FROM social_links ORDER BY "order" ASC`).all() as SocialLinkRow[]);
+  async all(): Promise<SocialLinkRow[]> {
+    if (!process.env.DATABASE_URL) return [];
+    return await sql`SELECT * FROM social_links ORDER BY "order" ASC` as SocialLinkRow[];
   },
-  create(data: Omit<SocialLinkRow, "id">) {
+  async create(data: Omit<SocialLinkRow, "id">) {
+    if (!process.env.DATABASE_URL) return null;
     const id = genId("soc");
-    db.prepare(`INSERT INTO social_links (id, platform, url, "order") VALUES (@id, @platform, @url, @order)`).run({
-      id,
-      ...data,
-    });
+    await sql`INSERT INTO social_links (id, platform, url, "order") VALUES (${id}, ${data.platform}, ${data.url}, ${data.order})`;
     return id;
   },
-  remove(id: string) {
-    db.prepare(`DELETE FROM social_links WHERE id = ?`).run(id);
+  async remove(id: string) {
+    if (!process.env.DATABASE_URL) return;
+    await sql`DELETE FROM social_links WHERE id = ${id}`;
   },
 };
 
 // ---------- Settings ----------
 export const SettingsStore = {
-  get(): SettingsRow {
-    return plain(db.prepare(`SELECT * FROM settings WHERE id = 'singleton'`).get() as SettingsRow);
+  async get(): Promise<SettingsRow> {
+    if (!process.env.DATABASE_URL) return {} as SettingsRow;
+    const rows = (await sql`SELECT * FROM settings WHERE id = 'singleton'`) as any[];
+    return rows[0] as SettingsRow;
   },
-  update(data: Partial<Omit<SettingsRow, "id" | "updatedAt">>) {
-    const current = this.get();
+  async update(data: Partial<Omit<SettingsRow, "id" | "updatedAt">>) {
+    if (!process.env.DATABASE_URL) return null;
+    const current = await this.get();
+    if (!current) return null;
     const next = { ...current, ...data };
-    db.prepare(
-      `UPDATE settings SET siteName=@siteName, tagline=@tagline, heroName=@heroName, heroRole=@heroRole,
-       heroText=@heroText, aboutText=@aboutText, contactEmail=@contactEmail, resumeUrl=@resumeUrl,
-       published=@published, updatedAt=datetime('now') WHERE id='singleton'`
-    ).run(next);
+    await sql`
+      UPDATE settings SET siteName=${next.siteName}, tagline=${next.tagline}, heroName=${next.heroName}, heroRole=${next.heroRole},
+       heroText=${next.heroText}, aboutText=${next.aboutText}, contactEmail=${next.contactEmail}, resumeUrl=${next.resumeUrl},
+       published=${next.published}, updatedAt=current_timestamp WHERE id='singleton'
+    `;
     return this.get();
   },
 };

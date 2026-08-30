@@ -4,7 +4,7 @@ import ProjectRow from "@/components/admin/ProjectRow";
 import { Plus } from "lucide-react";
 
 export default async function ProjectsPage() {
-  const projects = Projects.all();
+  const projects = await Projects.all();
 
   return (
     <div>

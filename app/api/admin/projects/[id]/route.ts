@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  const project = Projects.get(id);
+  const project = await Projects.get(id);
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(project);
 }
@@ -23,13 +23,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  const current = Projects.get(id);
+  const current = await Projects.get(id);
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
   const slug = body.slug !== undefined ? slugify(body.slug || body.title || current.title) : current.slug;
 
-  const updated = Projects.update(id, {
+  const updated = await Projects.update(id, {
     title: body.title ?? current.title,
     slug,
     description: body.description ?? current.description,
@@ -50,6 +50,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  Projects.remove(id);
+  await Projects.remove(id);
   return NextResponse.json({ ok: true });
 }

@@ -13,7 +13,7 @@ function slugify(title: string) {
 export async function GET() {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  return NextResponse.json(Projects.all());
+  return NextResponse.json(await Projects.all());
 }
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const slug = body.slug?.trim() ? slugify(body.slug) : slugify(body.title);
 
-  const created = Projects.create({
+  const created = await Projects.create({
     title: body.title,
     slug,
     description: body.description || "",

@@ -6,6 +6,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
   const { id } = await params;
-  SocialLinks.remove(id);
+  await SocialLinks.remove(id);
   return NextResponse.json({ ok: true });
 }

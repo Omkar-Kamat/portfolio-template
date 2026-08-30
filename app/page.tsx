@@ -11,12 +11,12 @@ import Footer from "@/components/portfolio/Footer";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const sections = Sections.enabled();
-  const settings = SettingsStore.get();
-  const projects = Projects.published();
-  const experiences = Experiences.all();
-  const skills = Skills.all();
-  const socialLinks = SocialLinks.all();
+  const sections = await Sections.enabled();
+  const settings = await SettingsStore.get();
+  const projects = await Projects.published();
+  const experiences = await Experiences.all();
+  const skills = await Skills.all();
+  const socialLinks = await SocialLinks.all();
 
   const registry: Record<string, React.ReactNode> = {
     hero: (
