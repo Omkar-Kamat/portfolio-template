@@ -30,6 +30,22 @@ function genId(prefix: string) {
 }
 export { genId };
 
+/**
+ * Convert a null-prototype object (as returned by node:sqlite) into a plain
+ * `{}` object so it can be serialized across the Server → Client Component
+ * boundary in Next.js.
+ */
+export function plain<T>(row: T): T {
+  if (row == null) return row;
+  return JSON.parse(JSON.stringify(row));
+}
+
+/** Convert an array of null-prototype rows to plain objects. */
+export function plainAll<T>(rows: T[]): T[] {
+  return rows.map(plain);
+}
+
+
 export function initDb() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS sections (

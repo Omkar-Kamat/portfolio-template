@@ -1,4 +1,4 @@
-import { db, genId } from "./db";
+import { db, genId, plain, plainAll } from "./db";
 
 export type SectionRow = {
   id: string;
@@ -71,12 +71,12 @@ export type SettingsRow = {
 // ---------- Sections ----------
 export const Sections = {
   all(): SectionRow[] {
-    return db.prepare(`SELECT * FROM sections ORDER BY "order" ASC`).all() as SectionRow[];
+    return plainAll(db.prepare(`SELECT * FROM sections ORDER BY "order" ASC`).all() as SectionRow[]);
   },
   enabled(): SectionRow[] {
-    return db
+    return plainAll(db
       .prepare(`SELECT * FROM sections WHERE enabled = 1 ORDER BY "order" ASC`)
-      .all() as SectionRow[];
+      .all() as SectionRow[]);
   },
   update(id: string, data: Partial<Pick<SectionRow, "enabled" | "order" | "title" | "content">>) {
     const current = db.prepare(`SELECT * FROM sections WHERE id = ?`).get(id) as SectionRow | undefined;
@@ -85,7 +85,7 @@ export const Sections = {
     db.prepare(
       `UPDATE sections SET enabled = ?, "order" = ?, title = ?, content = ?, updatedAt = datetime('now') WHERE id = ?`
     ).run(next.enabled ? 1 : 0, next.order, next.title, next.content, id);
-    return db.prepare(`SELECT * FROM sections WHERE id = ?`).get(id) as SectionRow;
+    return plain(db.prepare(`SELECT * FROM sections WHERE id = ?`).get(id) as SectionRow);
   },
   reorder(order: string[]) {
     const stmt = db.prepare(`UPDATE sections SET "order" = ? WHERE id = ?`);
@@ -103,15 +103,15 @@ export const Sections = {
 // ---------- Projects ----------
 export const Projects = {
   all(): ProjectRow[] {
-    return db.prepare(`SELECT * FROM projects ORDER BY "order" ASC, createdAt DESC`).all() as ProjectRow[];
+    return plainAll(db.prepare(`SELECT * FROM projects ORDER BY "order" ASC, createdAt DESC`).all() as ProjectRow[]);
   },
   published(): ProjectRow[] {
-    return db
+    return plainAll(db
       .prepare(`SELECT * FROM projects WHERE published = 1 ORDER BY "order" ASC, createdAt DESC`)
-      .all() as ProjectRow[];
+      .all() as ProjectRow[]);
   },
   get(id: string): ProjectRow | undefined {
-    return db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow | undefined;
+    return plain(db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as ProjectRow | undefined);
   },
   create(data: Omit<ProjectRow, "id" | "createdAt" | "updatedAt">) {
     const id = genId("proj");
@@ -141,10 +141,10 @@ export const Projects = {
 // ---------- Experiences ----------
 export const Experiences = {
   all(): ExperienceRow[] {
-    return db.prepare(`SELECT * FROM experiences ORDER BY "order" ASC`).all() as ExperienceRow[];
+    return plainAll(db.prepare(`SELECT * FROM experiences ORDER BY "order" ASC`).all() as ExperienceRow[]);
   },
   get(id: string): ExperienceRow | undefined {
-    return db.prepare(`SELECT * FROM experiences WHERE id = ?`).get(id) as ExperienceRow | undefined;
+    return plain(db.prepare(`SELECT * FROM experiences WHERE id = ?`).get(id) as ExperienceRow | undefined);
   },
   create(data: Omit<ExperienceRow, "id">) {
     const id = genId("exp");
@@ -173,7 +173,7 @@ export const Experiences = {
 // ---------- Skills ----------
 export const Skills = {
   all(): SkillRow[] {
-    return db.prepare(`SELECT * FROM skills ORDER BY category ASC, "order" ASC`).all() as SkillRow[];
+    return plainAll(db.prepare(`SELECT * FROM skills ORDER BY category ASC, "order" ASC`).all() as SkillRow[]);
   },
   create(data: Omit<SkillRow, "id">) {
     const id = genId("skill");
@@ -191,7 +191,7 @@ export const Skills = {
 // ---------- Social Links ----------
 export const SocialLinks = {
   all(): SocialLinkRow[] {
-    return db.prepare(`SELECT * FROM social_links ORDER BY "order" ASC`).all() as SocialLinkRow[];
+    return plainAll(db.prepare(`SELECT * FROM social_links ORDER BY "order" ASC`).all() as SocialLinkRow[]);
   },
   create(data: Omit<SocialLinkRow, "id">) {
     const id = genId("soc");
@@ -209,7 +209,7 @@ export const SocialLinks = {
 // ---------- Settings ----------
 export const SettingsStore = {
   get(): SettingsRow {
-    return db.prepare(`SELECT * FROM settings WHERE id = 'singleton'`).get() as SettingsRow;
+    return plain(db.prepare(`SELECT * FROM settings WHERE id = 'singleton'`).get() as SettingsRow);
   },
   update(data: Partial<Omit<SettingsRow, "id" | "updatedAt">>) {
     const current = this.get();
